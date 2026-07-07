@@ -1,4 +1,5 @@
 #include <CalcAppAPI/calc_app_api.hpp>
+#include <MathRenderer/math_renderer.hpp>
 #include <cstdint>
 
 namespace calc_app_api {
@@ -60,7 +61,7 @@ int CalcAppAPI::process_input_normal(const std::string& key) {
         this->input.clear();
         this->display_offsetX = 0;
         this->display_offsetY = 0;
-        this->cursor_info.scale = 0;
+        this->cursor_info.height = 0;
     }
     return this->state;
 }
@@ -85,31 +86,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
     if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND) return this->state;
     if (dst == nullptr) return this->state;
 
-    math_renderer::LayoutEngine le(this->input);
-    math_renderer::LayoutBox box = le.layout();
-    box.shift(this->display_offsetX, this->display_offsetY);
-    math_renderer::shift_for_cursor(box, this->input, this->cursor, this->screen_width, this->formula_area_height,
-                                    this->display_offsetX, this->display_offsetY);
-
-    if (this->cursor >= this->input.size()) {
-        this->cursor_info.x = box.width + this->display_offsetX;
-        this->cursor_info.y = std::max(box.ascent - math_renderer::ascent_for_scale(math_renderer::NORMAL_SCALE), 0) +
-                              this->display_offsetY;
-        this->cursor_info.scale = math_renderer::NORMAL_SCALE;
-    } else if (this->cursor >= 1 && this->input[this->cursor].type == math_renderer::TK_CLOSE_BRACE &&
-               this->input[this->cursor - 1].type == math_renderer::TK_OPEN_BRACE) {
-        this->cursor_info.x = this->input[this->cursor - 1].x;
-        this->cursor_info.y = this->input[this->cursor - 1].y;
-        this->cursor_info.scale = this->input[this->cursor - 1].scale;
-    } else {
-        this->cursor_info.x = this->input[this->cursor].x;
-        this->cursor_info.y = this->input[this->cursor].y;
-        this->cursor_info.scale = this->input[this->cursor].scale;
-    }
-
     this->renderer.clear();
-    this->renderer.draw_tokens(box.tokens, 0, 0, this->screen_width, this->formula_area_height);
-    this->renderer.draw_special_objects(box.spobj, 0, 0, this->screen_width, this->formula_area_height);
 
     if (this->state == STATE_CALC) {
         int index = 0;
@@ -126,7 +103,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
             if (c == '\0') break;
             ans_tokens.push_back(math_renderer::make_token(math_renderer::TK_SYMBOL, std::string(1, c)));
         }
-        box = math_renderer::LayoutEngine(ans_tokens).layout();
+        math_renderer::LayoutBox box = math_renderer::LayoutEngine(ans_tokens).layout();
         box.shift(this->screen_width - box.width, this->screen_height - (box.ascent + box.descent));
         this->renderer.draw_tokens(box.tokens, 0, this->formula_area_height + 1, this->screen_width,
                                    this->screen_height);
@@ -138,12 +115,38 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         math_renderer::make_math_str(this->input, index, math_str);
         math_str = this->calc.expand(math_str);
         std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
-        box = math_renderer::LayoutEngine(ans_tokens).layout();
-        box.shift(this->screen_width - box.width, this->screen_height - (box.ascent + box.descent));
-        this->renderer.draw_tokens(box.tokens, 0, this->formula_area_height + 1, this->screen_width,
-                                   this->screen_height);
-        this->renderer.draw_special_objects(box.spobj);
+        this->input = math_renderer::make_tokens(math_str);
+        this->cursor = this->input.size();
     }
+
+    math_renderer::LayoutBox box = math_renderer::LayoutEngine(this->input).layout();
+    box.shift(this->display_offsetX, this->display_offsetY);
+    math_renderer::shift_for_cursor(box, this->input, this->cursor, this->screen_width, this->formula_area_height,
+                                    this->display_offsetX, this->display_offsetY);
+
+    if (this->cursor >= this->input.size()) {
+        this->cursor_info.x = box.width + this->display_offsetX;
+        this->cursor_info.y = std::max(box.ascent - math_renderer::ascent_for_scale(math_renderer::NORMAL_SCALE), 0) +
+                              this->display_offsetY;
+        this->cursor_info.height = math_renderer::NORMAL_SCALE * math_renderer::BASE_H;
+    } else if (this->cursor >= 1 && this->input[this->cursor].type == math_renderer::TK_CLOSE_BRACE &&
+               this->input[this->cursor - 1].type == math_renderer::TK_OPEN_BRACE) {
+        this->cursor_info.x = this->input[this->cursor - 1].x;
+        this->cursor_info.y = this->input[this->cursor - 1].y;
+        this->cursor_info.height = math_renderer::ascent_for_letters(this->input[this->cursor - 1].m_letters,
+                                                                     this->input[this->cursor - 1].scale) +
+                                   math_renderer::descent_for_letters(this->input[this->cursor - 1].m_letters,
+                                                                      this->input[this->cursor - 1].scale);
+    } else {
+        this->cursor_info.x = this->input[this->cursor].x;
+        this->cursor_info.y = this->input[this->cursor].y;
+        this->cursor_info.height =
+            math_renderer::ascent_for_letters(this->input[this->cursor].m_letters, this->input[this->cursor].scale) +
+            math_renderer::descent_for_letters(this->input[this->cursor].m_letters, this->input[this->cursor].scale);
+    }
+
+    this->renderer.draw_tokens(box.tokens, 0, 0, this->screen_width, this->formula_area_height);
+    this->renderer.draw_special_objects(box.spobj, 0, 0, this->screen_width, this->formula_area_height);
 
     uint32_t* frame = this->renderer.get_draw_buffer();
 
@@ -172,7 +175,38 @@ int CalcAppAPI::process_touch_move_cursor(int x, int y) {
     math_renderer::move_cursor_touch(this->input, this->cursor, x, y);
     return this->state;
 }
+int CalcAppAPI::process_touch_screen(int x, int y) {
+    switch (this->state) {
+        case STATE_DEFAULT:
+        case STATE_CALC:
+        case STATE_EXPAND:
+            process_touch_move_cursor(x, y);
+            return this->state;
+        case STATE_PLOT:
+            plot.process_touch(x, y);
+            return this->state;
+        default:
+            break;
+    }
+    return this->state;
+}
+int CalcAppAPI::process_swipe_screen(int dx, int dy) {
+    switch (this->state) {
+        case STATE_DEFAULT:
+        case STATE_CALC:
+        case STATE_EXPAND:
+            return this->state;
+        case STATE_PLOT:
+            plot.process_swipe(dx, dy);
+            return this->state;
+        default:
+            break;
+    }
+    return this->state;
+}
 
 CursorInfo CalcAppAPI::get_cursor_info() { return this->cursor_info; }
+
+int CalcAppAPI::get_state() { return this->state; }
 
 }  // namespace calc_app_api

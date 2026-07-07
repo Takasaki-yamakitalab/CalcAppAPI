@@ -20,7 +20,7 @@ enum STATE {
 struct CursorInfo {
     int x;
     int y;
-    int scale;
+    int height;
 };
 
 class CalcAppAPI {
@@ -46,7 +46,10 @@ public:
     int process_draw_normal(uint32_t* pixels, uint32_t stride_pixels, int* activateFlg);
     int process_draw_graph(uint32_t* pixels, uint32_t stride_pixels);
     int process_touch_move_cursor(int x, int y);
+    int process_touch_screen(int x, int y);
+    int process_swipe_screen(int dx, int dy);
     CursorInfo get_cursor_info();
+    int get_state();
 };
 }  // namespace calc
 
