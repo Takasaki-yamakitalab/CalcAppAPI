@@ -161,7 +161,10 @@ int CalcAppAPI::process_draw_graph(uint32_t* dst, uint32_t stride_pixels) {
     if (this->state != STATE_PLOT) return this->state;
     if (dst == nullptr) return this->state;
 
-    this->plot.refresh(this->calc);
+    if (this->plot.refresh(this->calc)) {
+        this->state = STATE_CHANGE;
+        return this->state;
+    };
 
     uint32_t* frame = this->plot.get_draw_buffer();
 
