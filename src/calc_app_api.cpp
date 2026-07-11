@@ -95,10 +95,10 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         if (math_str == "we thirst for the seven wailings. we bear the koan of jericho." || math_str == "bluearchive") {
             *activateFlg = 1;
         }
-        double ans = this->calc.calc(math_str);
+        sci_calc::Complex ans = this->calc.calc(math_str);
         std::vector<math_renderer::Token> ans_tokens;
-        char buff[256];
-        snprintf(buff, 256, "=%.10g", ans);
+        std::string buff;
+        buff = "=" + this->calc.to_string_g(ans);
         for (char c : buff) {
             if (c == '\0') break;
             ans_tokens.push_back(math_renderer::make_token(math_renderer::TK_SYMBOL, std::string(1, c)));
