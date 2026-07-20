@@ -13,6 +13,7 @@ endif()
 find_package(SciCalc CONFIG REQUIRED)
 find_package(MathRenderer CONFIG REQUIRED)
 find_package(DrawGraph CONFIG REQUIRED)
+find_package(TetrisBMP CONFIG REQUIRED)
 
 set(SRC
     src/calc_app_api.cpp
@@ -33,10 +34,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(${PROJECT_NAME} PUBLIC
     SciCalc::SciCalc
     MathRenderer::MathRenderer
     DrawGraph::DrawGraph
+    TetrisBMP::TetrisBMP
 )
 
 include(GNUInstallDirs)
@@ -63,6 +65,7 @@ include(CMakeFindDependencyMacro)
 find_dependency(SciCalc CONFIG REQUIRED)
 find_dependency(MathRenderer CONFIG REQUIRED)
 find_dependency(DrawGraph CONFIG REQUIRED)
+find_dependency(TetrisBMP CONFIG REQUIRED)
 include(\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}Targets.cmake)
 check_required_components(${PROJECT_NAME})
     ")  # edit

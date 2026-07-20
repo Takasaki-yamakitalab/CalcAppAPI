@@ -1,5 +1,7 @@
+#include <BitmapTool/bmp.hpp>
 #include <CalcAppAPI/calc_app_api.hpp>
 #include <MathRenderer/math_renderer.hpp>
+#include <TetrisBMP/tetris_bmp.hpp>
 #include <cstdint>
 
 namespace calc_app_api {
@@ -13,14 +15,16 @@ CalcAppAPI::CalcAppAPI()
       screen_height(HEIGHT),
       formula_area_height(FORMULA_DISPLAY_HEIGHT),
       renderer(WIDTH, HEIGHT),
-      plot(WIDTH, HEIGHT, STATE_PLOT, STATE_CHANGE) {}
+      plot(WIDTH, HEIGHT, STATE_PLOT, STATE_CHANGE),
+      tetris(WIDTH, HEIGHT) {}
 
 CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_height)
     : screen_width(screen_width),
       screen_height(screen_height),
       formula_area_height(formula_area_height),
       renderer(screen_width, screen_height),
-      plot(screen_width, screen_height, STATE_PLOT, STATE_CHANGE) {}
+      plot(screen_width, screen_height, STATE_PLOT, STATE_CHANGE),
+      tetris(screen_width, screen_height) {}
 
 int CalcAppAPI::load_font_data(const char* data, size_t length) {
     bmp::Image img = bmp::loadBMP1bit(data, length);
@@ -31,7 +35,14 @@ int CalcAppAPI::load_font_data(const char* data, size_t length) {
     this->renderer.load_glyph_list(glyph_list);
     this->plot.load_glyph_list(glyph_list);
     this->renderer.init_letter_list();
+    bmp::loadLetterGlyph(glyph_list, std::vector<std::string>(math_renderer::LETTERS, math_renderer::LETTERS + math_renderer::LETTER_NUM));
     return this->state;
+}
+
+int CalcAppAPI::process_input(const std::string& key) {
+    if (this->state == STATE_PLOT) return process_input_graph(key);
+    if (this->state == STATE_TETRIS) return process_input_tetris(key);
+    return process_input_normal(key);
 }
 
 int CalcAppAPI::process_input_normal(const std::string& key) {
@@ -82,6 +93,31 @@ int CalcAppAPI::process_input_graph(const std::string& key) {
     return this->state;
 }
 
+int CalcAppAPI::process_input_tetris(const std::string& key) {
+    if (this->state == STATE_CHANGE) {
+        this->state = STATE_DEFAULT;
+        return this->state;
+    }
+    if (this->state != STATE_TETRIS) return this->state;
+    if (key == "1") tetris.process_input(tetris::INPUT_LEFT);
+    if (key == "9") tetris.process_input(tetris::INPUT_RIGHT);
+    if (key == "3") tetris.process_input(tetris::INPUT_DOWN);
+    if (key == "4" || key == "2") tetris.process_input(tetris::INPUT_ROT_L);
+    if (key == "8" || key == "6") tetris.process_input(tetris::INPUT_ROT_R);
+    if (key == "5" || key == "0") tetris.process_input(tetris::INPUT_HOLD);
+
+    if (key == "ac") {
+        this->state = STATE_DEFAULT;
+    }
+    return this->state;
+}
+
+int CalcAppAPI::process_draw(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
+    if (this->state == STATE_PLOT) return process_draw_graph(dst, stride_pixels);
+    if (this->state == STATE_TETRIS) return process_draw_tetris(dst, stride_pixels);
+    return process_draw_normal(dst, stride_pixels, activateFlg);
+}
+
 int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
     if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND) return this->state;
     if (dst == nullptr) return this->state;
@@ -95,6 +131,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         if (math_str == "we thirst for the seven wailings. we bear the koan of jericho." || math_str == "bluearchive") {
             *activateFlg = 1;
         }
+        if (math_str == "tetris") this->state = STATE_TETRIS;
         sci_calc::Complex ans = this->calc.calc(math_str);
         std::vector<math_renderer::Token> ans_tokens;
         std::string buff;
@@ -167,6 +204,21 @@ int CalcAppAPI::process_draw_graph(uint32_t* dst, uint32_t stride_pixels) {
     };
 
     uint32_t* frame = this->plot.get_draw_buffer();
+
+    for (int y = 0; y < this->screen_height; y++) {
+        std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
+    }
+    return this->state;
+}
+
+int CalcAppAPI::process_draw_tetris(uint32_t* dst, uint32_t stride_pixels) {
+    if (this->state != STATE_TETRIS) return this->state;
+    if (dst == nullptr) return this->state;
+
+    this->tetris.update();
+    this->tetris.clear_screen();
+    this->tetris.draw_screen();
+    uint32_t* frame = this->tetris.get_screen().data();
 
     for (int y = 0; y < this->screen_height; y++) {
         std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
