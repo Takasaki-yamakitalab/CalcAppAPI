@@ -1,7 +1,8 @@
 #include <BitmapTool/bmp.hpp>
 #include <CalcAppAPI/calc_app_api.hpp>
 #include <MathRenderer/math_renderer.hpp>
-#include <TetrisBMP/tetris_bmp.hpp>
+#include <Pentomino/pentomino_defines.hpp>
+#include <PentominoBMP/pentomino_bmp.hpp>
 #include <cstdint>
 
 namespace calc_app_api {
@@ -16,7 +17,7 @@ CalcAppAPI::CalcAppAPI()
       formula_area_height(FORMULA_DISPLAY_HEIGHT),
       renderer(WIDTH, HEIGHT),
       plot(WIDTH, HEIGHT, STATE_PLOT, STATE_DEFAULT),
-      tetris(WIDTH, HEIGHT) {}
+      pentomino(WIDTH, HEIGHT) {}
 
 CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_height)
     : screen_width(screen_width),
@@ -24,7 +25,7 @@ CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_hei
       formula_area_height(formula_area_height),
       renderer(screen_width, screen_height),
       plot(screen_width, screen_height, STATE_PLOT, STATE_DEFAULT),
-      tetris(screen_width, screen_height) {}
+      pentomino(screen_width, screen_height) {}
 
 int CalcAppAPI::load_font_data(const char* data, size_t length) {
     bmp::Image img = bmp::loadBMP1bit(data, length);
@@ -42,7 +43,7 @@ int CalcAppAPI::load_font_data(const char* data, size_t length) {
 
 int CalcAppAPI::process_input(const std::string& key) {
     if (this->state == STATE_PLOT) return process_input_graph(key);
-    if (this->state == STATE_TETRIS) return process_input_tetris(key);
+    if (this->state == STATE_PENTOMINO) return process_input_pentomino(key);
     return process_input_normal(key);
 }
 
@@ -94,18 +95,19 @@ int CalcAppAPI::process_input_graph(const std::string& key) {
     return this->state;
 }
 
-int CalcAppAPI::process_input_tetris(const std::string& key) {
+int CalcAppAPI::process_input_pentomino(const std::string& key) {
     if (this->state == STATE_CHANGE) {
         this->state = STATE_DEFAULT;
         return this->state;
     }
-    if (this->state != STATE_TETRIS) return this->state;
-    if (key == "1") tetris.process_input(tetris::INPUT_LEFT);
-    if (key == "9") tetris.process_input(tetris::INPUT_RIGHT);
-    if (key == "3") tetris.process_input(tetris::INPUT_DOWN);
-    if (key == "4" || key == "2") tetris.process_input(tetris::INPUT_ROT_L);
-    if (key == "8" || key == "6") tetris.process_input(tetris::INPUT_ROT_R);
-    if (key == "5" || key == "0") tetris.process_input(tetris::INPUT_HOLD);
+    if (this->state != STATE_PENTOMINO) return this->state;
+    if (key == "7") pentomino.process_input(pentomino::INPUT_UP);
+    if (key == "1") pentomino.process_input(pentomino::INPUT_LEFT);
+    if (key == "9") pentomino.process_input(pentomino::INPUT_RIGHT);
+    if (key == "3") pentomino.process_input(pentomino::INPUT_DOWN);
+    if (key == "4" || key == "2") pentomino.process_input(pentomino::INPUT_ROT_L);
+    if (key == "8" || key == "6") pentomino.process_input(pentomino::INPUT_ROT_R);
+    if (key == "5" || key == "0") pentomino.process_input(pentomino::INPUT_HOLD);
 
     if (key == "ac") {
         this->state = STATE_DEFAULT;
@@ -115,7 +117,7 @@ int CalcAppAPI::process_input_tetris(const std::string& key) {
 
 int CalcAppAPI::process_draw(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
     if (this->state == STATE_PLOT) return process_draw_graph(dst, stride_pixels);
-    if (this->state == STATE_TETRIS) return process_draw_tetris(dst, stride_pixels);
+    if (this->state == STATE_PENTOMINO) return process_draw_pentomino(dst, stride_pixels);
     return process_draw_normal(dst, stride_pixels, activateFlg);
 }
 
@@ -130,13 +132,15 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         std::string math_str;
         math_renderer::make_math_str(this->input, index, math_str);
         if (math_str == "we thirst for the seven wailings. we bear the koan of jericho." || math_str == "bluearchive") {
+            this->state = STATE_DEFAULT;
             *activateFlg = 1;
+            return this->state;
         }
-        if (math_str == "tetris") {
-            this->state = STATE_TETRIS;
-            this->tetris = tetris_bmp::TetrisBMP(screen_width, screen_height);
+        if (math_str == "pentomino") {
+            this->state = STATE_PENTOMINO;
+            this->pentomino = pentomino_bmp::PentominoBMP(screen_width, screen_height);
             this->cursor_info.height = 0;
-            return process_draw_tetris(dst, stride_pixels);
+            return process_draw_pentomino(dst, stride_pixels);
         }
         sci_calc::Complex ans = this->calc.calc(math_str);
         std::vector<math_renderer::Token> ans_tokens;
@@ -217,14 +221,14 @@ int CalcAppAPI::process_draw_graph(uint32_t* dst, uint32_t stride_pixels) {
     return this->state;
 }
 
-int CalcAppAPI::process_draw_tetris(uint32_t* dst, uint32_t stride_pixels) {
-    if (this->state != STATE_TETRIS) return this->state;
+int CalcAppAPI::process_draw_pentomino(uint32_t* dst, uint32_t stride_pixels) {
+    if (this->state != STATE_PENTOMINO) return this->state;
     if (dst == nullptr) return this->state;
 
-    this->tetris.update();
-    this->tetris.clear_screen();
-    this->tetris.draw_screen();
-    uint32_t* frame = this->tetris.get_screen().data();
+    this->pentomino.update();
+    this->pentomino.clear_screen();
+    this->pentomino.draw_screen();
+    uint32_t* frame = this->pentomino.get_screen().data();
 
     for (int y = 0; y < this->screen_height; y++) {
         std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
