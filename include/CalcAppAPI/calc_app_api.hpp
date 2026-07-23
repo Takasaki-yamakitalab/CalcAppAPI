@@ -35,6 +35,7 @@ private:
     int display_offsetX = 0;
     int display_offsetY = 0;
     int state = STATE_DEFAULT;
+    bool got_input = true;
     math_renderer::MathRenderer renderer;
     sci_calc::SciCalc calc;
     draw_graph::DrawGraph plot;
@@ -43,7 +44,7 @@ private:
 public:
     CalcAppAPI();
     CalcAppAPI(int screen_width, int screen_height, int formula_area_height);
-    int load_font_data(const char* data, size_t length);
+    int init();
     int process_input(const std::string& key);
     int process_input_normal(const std::string& key);
     int process_input_graph(const std::string& key);

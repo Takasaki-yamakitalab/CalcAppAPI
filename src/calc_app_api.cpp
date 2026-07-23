@@ -17,7 +17,9 @@ CalcAppAPI::CalcAppAPI()
       formula_area_height(FORMULA_DISPLAY_HEIGHT),
       renderer(WIDTH, HEIGHT),
       plot(WIDTH, HEIGHT, STATE_PLOT, STATE_DEFAULT),
-      pentomino(WIDTH, HEIGHT) {}
+      pentomino(WIDTH, HEIGHT) {
+    bmp::loadLetterGlyph();
+}
 
 CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_height)
     : screen_width(screen_width),
@@ -25,23 +27,16 @@ CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_hei
       formula_area_height(formula_area_height),
       renderer(screen_width, screen_height),
       plot(screen_width, screen_height, STATE_PLOT, STATE_DEFAULT),
-      pentomino(screen_width, screen_height) {}
-
-int CalcAppAPI::load_font_data(const char* data, size_t length) {
-    bmp::Image img = bmp::loadBMP1bit(data, length);
-    std::vector<bmp::Glyph> glyph_list(0);
-    for (int i = 0; i < math_renderer::LETTER_NUM; i++) {
-        glyph_list.push_back(bmp::extractGlyph(img, i, math_renderer::BASE_W, math_renderer::BASE_H));
-    }
-    this->renderer.load_glyph_list(glyph_list);
-    this->plot.load_glyph_list(glyph_list);
-    this->renderer.init_letter_list();
-    std::vector<std::string> name(math_renderer::LETTERS, math_renderer::LETTERS + math_renderer::LETTER_NUM);
-    bmp::loadLetterGlyph(glyph_list, name);
-    return this->state;
+      pentomino(screen_width, screen_height) {
+    bmp::loadLetterGlyph();
 }
 
+int CalcAppAPI::init() {
+    bmp::loadLetterGlyph();
+    return this->state;
+}
 int CalcAppAPI::process_input(const std::string& key) {
+    this->got_input = true;
     if (this->state == STATE_PLOT) return process_input_graph(key);
     if (this->state == STATE_PENTOMINO) return process_input_pentomino(key);
     return process_input_normal(key);
@@ -122,8 +117,19 @@ int CalcAppAPI::process_draw(uint32_t* dst, uint32_t stride_pixels, int* activat
 }
 
 int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
+    static uint32_t* frame = nullptr;
+
     if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND) return this->state;
     if (dst == nullptr) return this->state;
+
+    // 新たな入力が無い場合、前回の画面をそのまま描画する
+    if (!this->got_input && frame != nullptr) {
+        for (int y = 0; y < this->screen_height; y++) {
+            std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
+        }
+        return this->state;
+    }
+    this->got_input = false;
 
     this->renderer.clear();
 
@@ -195,7 +201,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
     this->renderer.draw_tokens(box.tokens, 0, 0, this->screen_width, this->formula_area_height);
     this->renderer.draw_special_objects(box.spobj, 0, 0, this->screen_width, this->formula_area_height);
 
-    uint32_t* frame = this->renderer.get_draw_buffer();
+    frame = this->renderer.get_draw_buffer();
 
     for (int y = 0; y < this->screen_height; y++) {
         std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
@@ -205,15 +211,26 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
 }
 
 int CalcAppAPI::process_draw_graph(uint32_t* dst, uint32_t stride_pixels) {
+    static uint32_t* frame = nullptr;
+
     if (this->state != STATE_PLOT) return this->state;
     if (dst == nullptr) return this->state;
+
+    // 新たな入力が無い場合、前回の画面をそのまま描画する
+    if (!this->got_input && frame != nullptr) {
+        for (int y = 0; y < this->screen_height; y++) {
+            std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
+        }
+        return this->state;
+    }
+    this->got_input = false;
 
     if (this->plot.refresh(this->calc)) {
         this->state = STATE_CHANGE;
         return this->state;
     };
 
-    uint32_t* frame = this->plot.get_draw_buffer();
+    frame = this->plot.get_draw_buffer();
 
     for (int y = 0; y < this->screen_height; y++) {
         std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));

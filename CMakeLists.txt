@@ -11,6 +11,8 @@ if (ANDROID)
     set(CMAKE_ANDROID_STL_TYPE c++_static)
 endif()
 
+find_package(DotFont CONFIG REQUIRED)
+find_package(BitmapTool CONFIG REQUIRED)
 find_package(SciCalc CONFIG REQUIRED)
 find_package(MathRenderer CONFIG REQUIRED)
 find_package(DrawGraph CONFIG REQUIRED)
@@ -36,6 +38,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    DotFont::DotFont
+    BitmapTool::BitmapTool
     SciCalc::SciCalc
     MathRenderer::MathRenderer
     DrawGraph::DrawGraph
