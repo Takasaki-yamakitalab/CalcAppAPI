@@ -1,5 +1,8 @@
+#include <BitmapTool/bmp.hpp>
 #include <CalcAppAPI/calc_app_api.hpp>
 #include <MathRenderer/math_renderer.hpp>
+#include <Pentomino/pentomino_defines.hpp>
+#include <PentominoBMP/pentomino_bmp.hpp>
 #include <cstdint>
 
 namespace calc_app_api {
@@ -13,25 +16,30 @@ CalcAppAPI::CalcAppAPI()
       screen_height(HEIGHT),
       formula_area_height(FORMULA_DISPLAY_HEIGHT),
       renderer(WIDTH, HEIGHT),
-      plot(WIDTH, HEIGHT, STATE_PLOT, STATE_CHANGE) {}
+      plot(WIDTH, HEIGHT, STATE_PLOT, STATE_DEFAULT),
+      pentomino(WIDTH, HEIGHT) {
+    bmp::loadLetterGlyph();
+}
 
 CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_height)
     : screen_width(screen_width),
       screen_height(screen_height),
       formula_area_height(formula_area_height),
       renderer(screen_width, screen_height),
-      plot(screen_width, screen_height, STATE_PLOT, STATE_CHANGE) {}
+      plot(screen_width, screen_height, STATE_PLOT, STATE_DEFAULT),
+      pentomino(screen_width, screen_height) {
+    bmp::loadLetterGlyph();
+}
 
-int CalcAppAPI::load_font_data(const char* data, size_t length) {
-    bmp::Image img = bmp::loadBMP1bit(data, length);
-    std::vector<bmp::Glyph> glyph_list(0);
-    for (int i = 0; i < math_renderer::LETTER_NUM; i++) {
-        glyph_list.push_back(bmp::extractGlyph(img, i, math_renderer::BASE_W, math_renderer::BASE_H));
-    }
-    this->renderer.load_glyph_list(glyph_list);
-    this->plot.load_glyph_list(glyph_list);
-    this->renderer.init_letter_list();
+int CalcAppAPI::init() {
+    bmp::loadLetterGlyph();
     return this->state;
+}
+int CalcAppAPI::process_input(const std::string& key) {
+    this->got_input = true;
+    if (this->state == STATE_PLOT) return process_input_graph(key);
+    if (this->state == STATE_PENTOMINO) return process_input_pentomino(key);
+    return process_input_normal(key);
 }
 
 int CalcAppAPI::process_input_normal(const std::string& key) {
@@ -82,9 +90,46 @@ int CalcAppAPI::process_input_graph(const std::string& key) {
     return this->state;
 }
 
+int CalcAppAPI::process_input_pentomino(const std::string& key) {
+    if (this->state == STATE_CHANGE) {
+        this->state = STATE_DEFAULT;
+        return this->state;
+    }
+    if (this->state != STATE_PENTOMINO) return this->state;
+    if (key == "7") pentomino.process_input(pentomino::INPUT_UP);
+    if (key == "1") pentomino.process_input(pentomino::INPUT_LEFT);
+    if (key == "9") pentomino.process_input(pentomino::INPUT_RIGHT);
+    if (key == "3") pentomino.process_input(pentomino::INPUT_DOWN);
+    if (key == "4" || key == "2") pentomino.process_input(pentomino::INPUT_ROT_L);
+    if (key == "8" || key == "6") pentomino.process_input(pentomino::INPUT_ROT_R);
+    if (key == "5" || key == "0") pentomino.process_input(pentomino::INPUT_HOLD);
+
+    if (key == "ac") {
+        this->state = STATE_DEFAULT;
+    }
+    return this->state;
+}
+
+int CalcAppAPI::process_draw(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
+    if (this->state == STATE_PLOT) return process_draw_graph(dst, stride_pixels);
+    if (this->state == STATE_PENTOMINO) return process_draw_pentomino(dst, stride_pixels);
+    return process_draw_normal(dst, stride_pixels, activateFlg);
+}
+
 int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
+    static uint32_t* frame = nullptr;
+
     if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND) return this->state;
     if (dst == nullptr) return this->state;
+
+    // 新たな入力が無い場合、前回の画面をそのまま描画する
+    if (!this->got_input && frame != nullptr) {
+        for (int y = 0; y < this->screen_height; y++) {
+            std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
+        }
+        return this->state;
+    }
+    this->got_input = false;
 
     this->renderer.clear();
 
@@ -93,7 +138,15 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         std::string math_str;
         math_renderer::make_math_str(this->input, index, math_str);
         if (math_str == "we thirst for the seven wailings. we bear the koan of jericho." || math_str == "bluearchive") {
+            this->state = STATE_DEFAULT;
             *activateFlg = 1;
+            return this->state;
+        }
+        if (math_str == "pentomino") {
+            this->state = STATE_PENTOMINO;
+            this->pentomino = pentomino_bmp::PentominoBMP(screen_width, screen_height);
+            this->cursor_info.height = 0;
+            return process_draw_pentomino(dst, stride_pixels);
         }
         sci_calc::Complex ans = this->calc.calc(math_str);
         std::vector<math_renderer::Token> ans_tokens;
@@ -148,7 +201,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
     this->renderer.draw_tokens(box.tokens, 0, 0, this->screen_width, this->formula_area_height);
     this->renderer.draw_special_objects(box.spobj, 0, 0, this->screen_width, this->formula_area_height);
 
-    uint32_t* frame = this->renderer.get_draw_buffer();
+    frame = this->renderer.get_draw_buffer();
 
     for (int y = 0; y < this->screen_height; y++) {
         std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
@@ -158,15 +211,41 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
 }
 
 int CalcAppAPI::process_draw_graph(uint32_t* dst, uint32_t stride_pixels) {
+    static uint32_t* frame = nullptr;
+
     if (this->state != STATE_PLOT) return this->state;
     if (dst == nullptr) return this->state;
+
+    // 新たな入力が無い場合、前回の画面をそのまま描画する
+    if (!this->got_input && frame != nullptr) {
+        for (int y = 0; y < this->screen_height; y++) {
+            std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
+        }
+        return this->state;
+    }
+    this->got_input = false;
 
     if (this->plot.refresh(this->calc)) {
         this->state = STATE_CHANGE;
         return this->state;
     };
 
-    uint32_t* frame = this->plot.get_draw_buffer();
+    frame = this->plot.get_draw_buffer();
+
+    for (int y = 0; y < this->screen_height; y++) {
+        std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));
+    }
+    return this->state;
+}
+
+int CalcAppAPI::process_draw_pentomino(uint32_t* dst, uint32_t stride_pixels) {
+    if (this->state != STATE_PENTOMINO) return this->state;
+    if (dst == nullptr) return this->state;
+
+    this->pentomino.update();
+    this->pentomino.clear_screen();
+    this->pentomino.draw_screen();
+    uint32_t* frame = this->pentomino.get_screen().data();
 
     for (int y = 0; y < this->screen_height; y++) {
         std::memcpy(dst + y * stride_pixels, frame + y * this->screen_width, this->screen_width * sizeof(uint32_t));

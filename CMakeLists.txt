@@ -1,18 +1,22 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(CalcAppAPI LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 if (ANDROID)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
     set(CMAKE_ANDROID_STL_TYPE c++_static)
 endif()
 
+find_package(DotFont CONFIG REQUIRED)
+find_package(BitmapTool CONFIG REQUIRED)
 find_package(SciCalc CONFIG REQUIRED)
 find_package(MathRenderer CONFIG REQUIRED)
 find_package(DrawGraph CONFIG REQUIRED)
+find_package(PentominoBMP CONFIG REQUIRED)
 
 set(SRC
     src/calc_app_api.cpp
@@ -33,10 +37,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    DotFont::DotFont
+    BitmapTool::BitmapTool
     SciCalc::SciCalc
     MathRenderer::MathRenderer
     DrawGraph::DrawGraph
+    PentominoBMP::PentominoBMP
 )
 
 include(GNUInstallDirs)
@@ -63,6 +70,7 @@ include(CMakeFindDependencyMacro)
 find_dependency(SciCalc CONFIG REQUIRED)
 find_dependency(MathRenderer CONFIG REQUIRED)
 find_dependency(DrawGraph CONFIG REQUIRED)
+find_dependency(PentominoBMP CONFIG REQUIRED)
 include(\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}Targets.cmake)
 check_required_components(${PROJECT_NAME})
     ")  # edit
