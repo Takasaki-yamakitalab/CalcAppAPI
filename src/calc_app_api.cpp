@@ -1,6 +1,7 @@
 #include <BitmapTool/bmp.hpp>
 #include <CalcAppAPI/calc_app_api.hpp>
 #include <MathRenderer/math_renderer.hpp>
+#include <MathRenderer/math_renderer_defines.hpp>
 #include <Pentomino/pentomino_defines.hpp>
 #include <PentominoBMP/pentomino_bmp.hpp>
 #include <cstdint>
@@ -142,6 +143,11 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
             *activateFlg = 1;
             return this->state;
         }
+        if (math_str == "we thirst for the wailings of jericho. we bear the seven koans.") {
+            this->state = STATE_DEFAULT;
+            *activateFlg = 2;
+            return this->state;
+        }
         if (math_str == "pentomino") {
             this->state = STATE_PENTOMINO;
             this->pentomino = pentomino_bmp::PentominoBMP(screen_width, screen_height);
@@ -149,18 +155,37 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
             return process_draw_pentomino(dst, stride_pixels);
         }
         sci_calc::Complex ans = this->calc.calc(math_str);
-        std::vector<math_renderer::Token> ans_tokens;
-        std::string buff;
-        buff = "=" + this->calc.to_string_g(ans);
-        for (char c : buff) {
-            if (c == '\0') break;
-            ans_tokens.push_back(math_renderer::make_token(math_renderer::TK_SYMBOL, std::string(1, c)));
+        math_str = "=" + this->calc.to_string_g(ans, 10);
+
+        size_t br = math_str.find("\n");
+
+        math_renderer::LayoutBox box;
+        if (br == std::string::npos) {
+            std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
+            math_renderer::LayoutBox box = math_renderer::LayoutEngine(ans_tokens).layout();
+            box.shift(this->screen_width - box.width, this->screen_height - (box.ascent + box.descent));
+            this->renderer.draw_tokens(box.tokens, 0, this->formula_area_height + 1, this->screen_width,
+                                       this->screen_height);
+            this->renderer.draw_special_objects(box.spobj);
+        } else {
+            std::string up_str = math_str.substr(0, br);
+            std::string down_str = math_str.substr(br + 1);
+            std::vector<math_renderer::Token> up_tokens = math_renderer::make_tokens(up_str);
+            std::vector<math_renderer::Token> down_tokens = math_renderer::make_tokens(down_str);
+            math_renderer::LayoutBox up_box = math_renderer::LayoutEngine(up_tokens).layout();
+            math_renderer::LayoutBox down_box = math_renderer::LayoutEngine(down_tokens).layout();
+            int x = this->screen_width - std::max(up_box.width, down_box.width);
+            int y2 = this->screen_height - (down_box.ascent + down_box.descent);
+            int y1 = y2 - (up_box.ascent + up_box.descent);
+            up_box.shift(x, y1);
+            down_box.shift(x, y2);
+            this->renderer.draw_tokens(up_box.tokens, 0, this->formula_area_height + 1, this->screen_width,
+                                       this->screen_height);
+            this->renderer.draw_special_objects(up_box.spobj);
+            this->renderer.draw_tokens(down_box.tokens, 0, this->formula_area_height + 1, this->screen_width,
+                                       this->screen_height);
+            this->renderer.draw_special_objects(down_box.spobj);
         }
-        math_renderer::LayoutBox box = math_renderer::LayoutEngine(ans_tokens).layout();
-        box.shift(this->screen_width - box.width, this->screen_height - (box.ascent + box.descent));
-        this->renderer.draw_tokens(box.tokens, 0, this->formula_area_height + 1, this->screen_width,
-                                   this->screen_height);
-        this->renderer.draw_special_objects(box.spobj);
     }
     if (this->state == STATE_EXPAND) {
         int index = 0;
@@ -170,6 +195,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
         this->input = math_renderer::make_tokens(math_str);
         this->cursor = this->input.size();
+        this->state = STATE_DEFAULT;
     }
 
     math_renderer::LayoutBox box = math_renderer::LayoutEngine(this->input).layout();
@@ -254,6 +280,7 @@ int CalcAppAPI::process_draw_pentomino(uint32_t* dst, uint32_t stride_pixels) {
 }
 
 int CalcAppAPI::process_touch_move_cursor(int x, int y) {
+    this->got_input = true;
     math_renderer::move_cursor_touch(this->input, this->cursor, x, y);
     return this->state;
 }
