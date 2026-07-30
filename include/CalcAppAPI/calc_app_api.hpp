@@ -15,7 +15,8 @@ enum STATE {
     STATE_CALC = 1,
     STATE_PLOT = 2,
     STATE_EXPAND = 3,
-    STATE_PENTOMINO = 4,
+    STATE_FACTOR = 4,
+    STATE_PENTOMINO = 100,
     STATE_CHANGE = -1,
 };
 

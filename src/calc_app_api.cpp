@@ -197,6 +197,16 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         this->cursor = this->input.size();
         this->state = STATE_DEFAULT;
     }
+    if (this->state == STATE_FACTOR) {
+        int index = 0;
+        std::string math_str;
+        math_renderer::make_math_str(this->input, index, math_str);
+        math_str = this->calc.factorize(math_str);
+        std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
+        this->input = math_renderer::make_tokens(math_str);
+        this->cursor = this->input.size();
+        this->state = STATE_DEFAULT;
+    }
 
     math_renderer::LayoutBox box = math_renderer::LayoutEngine(this->input).layout();
     box.shift(this->display_offsetX, this->display_offsetY);
