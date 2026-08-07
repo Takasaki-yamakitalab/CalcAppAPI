@@ -120,7 +120,9 @@ int CalcAppAPI::process_draw(uint32_t* dst, uint32_t stride_pixels, int* activat
 int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* activateFlg) {
     static uint32_t* frame = nullptr;
 
-    if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND) return this->state;
+    if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND &&
+        this->state != STATE_FACTOR)
+        return this->state;
     if (dst == nullptr) return this->state;
 
     // 新たな入力が無い場合、前回の画面をそのまま描画する
@@ -299,6 +301,7 @@ int CalcAppAPI::process_touch_screen(int x, int y) {
         case STATE_DEFAULT:
         case STATE_CALC:
         case STATE_EXPAND:
+        case STATE_FACTOR:
             process_touch_move_cursor(x, y);
             return this->state;
         case STATE_PLOT:
@@ -314,6 +317,7 @@ int CalcAppAPI::process_swipe_screen(int dx, int dy) {
         case STATE_DEFAULT:
         case STATE_CALC:
         case STATE_EXPAND:
+        case STATE_FACTOR:
             return this->state;
         case STATE_PLOT:
             plot.process_swipe(dx, dy);

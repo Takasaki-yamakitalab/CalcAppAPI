@@ -17,6 +17,7 @@ find_package(SciCalc CONFIG REQUIRED)
 find_package(MathRenderer CONFIG REQUIRED)
 find_package(DrawGraph CONFIG REQUIRED)
 find_package(PentominoBMP CONFIG REQUIRED)
+find_package(Polynomial CONFIG REQUIRED)
 
 set(SRC
     src/calc_app_api.cpp
@@ -44,6 +45,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     MathRenderer::MathRenderer
     DrawGraph::DrawGraph
     PentominoBMP::PentominoBMP
+    Polynomial::Polynomial
 )
 
 include(GNUInstallDirs)
@@ -71,6 +73,7 @@ find_dependency(SciCalc CONFIG REQUIRED)
 find_dependency(MathRenderer CONFIG REQUIRED)
 find_dependency(DrawGraph CONFIG REQUIRED)
 find_dependency(PentominoBMP CONFIG REQUIRED)
+find_dependency(Polynomial CONFIG REQUIRED)
 include(\${CMAKE_CURRENT_LIST_DIR}/${PROJECT_NAME}Targets.cmake)
 check_required_components(${PROJECT_NAME})
     ")  # edit
