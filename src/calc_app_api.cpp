@@ -114,7 +114,7 @@ int CalcAppAPI::process_input_graph(const std::string& key) {
     this->state = this->plot.process_input(key);
     if (key == "0") {
         this->input = this->plot.get_graph_input();
-        this->cursor = this->input.size();
+        this->cursor = (int)this->input.size();
         this->display_offsetX = 0;
         this->display_offsetY = 0;
     }
@@ -191,7 +191,6 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
 
         size_t br = math_str.find("\n");
 
-        math_renderer::LayoutBox box;
         if (br == std::string::npos) {
             std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
             math_renderer::LayoutBox box = math_renderer::LayoutEngine(ans_tokens).layout();
@@ -226,7 +225,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         math_str = this->calc.expand(math_str);
         std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
         this->input = math_renderer::make_tokens(math_str);
-        this->cursor = this->input.size();
+        this->cursor = (int)this->input.size();
         this->state = STATE_DEFAULT;
     }
     if (this->state == STATE_FACTOR) {
@@ -236,7 +235,7 @@ int CalcAppAPI::process_draw_normal(uint32_t* dst, uint32_t stride_pixels, int* 
         math_str = this->calc.factorize(math_str);
         std::vector<math_renderer::Token> ans_tokens = math_renderer::make_tokens(math_str);
         this->input = math_renderer::make_tokens(math_str);
-        this->cursor = this->input.size();
+        this->cursor = (int)this->input.size();
         this->state = STATE_DEFAULT;
     }
 
