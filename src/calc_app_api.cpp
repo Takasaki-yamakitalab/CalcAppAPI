@@ -4,6 +4,7 @@
 #include <MathRenderer/math_renderer_defines.hpp>
 #include <Pentomino/pentomino_defines.hpp>
 #include <PentominoBMP/pentomino_bmp.hpp>
+#include <SciCalc/sci_calc.hpp>
 #include <cstdint>
 
 namespace calc_app_api {
@@ -57,6 +58,13 @@ CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_hei
 int CalcAppAPI::init() {
     bmp::loadLetterGlyph();
     return this->state;
+}
+int CalcAppAPI::set_path(const std::string& path) {
+    return this->calc.set_path(path);
+}
+int CalcAppAPI::save_scicalc() {
+    this->calc.save_memory();
+    return 0;
 }
 int CalcAppAPI::process_input(const std::string& key) {
     this->got_input = true;

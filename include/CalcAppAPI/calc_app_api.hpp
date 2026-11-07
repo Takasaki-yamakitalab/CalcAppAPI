@@ -48,6 +48,8 @@ public:
     CalcAppAPI(int screen_width, int screen_height, int formula_area_height);
     CalcAppAPI(int screen_width, int screen_height, int formula_area_height, const std::string& scicalcmem_path);
     int init();
+    int set_path(const std::string& scicalcmem_path);
+    int save_scicalc();
     int process_input(const std::string& key);
     int process_input_normal(const std::string& key);
     int process_input_graph(const std::string& key);
