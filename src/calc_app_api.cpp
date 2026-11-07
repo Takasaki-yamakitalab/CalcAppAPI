@@ -22,11 +22,33 @@ CalcAppAPI::CalcAppAPI()
     bmp::loadLetterGlyph();
 }
 
+CalcAppAPI::CalcAppAPI(const std::string& path)
+    : screen_width(WIDTH),
+      screen_height(HEIGHT),
+      formula_area_height(FORMULA_DISPLAY_HEIGHT),
+      renderer(WIDTH, HEIGHT),
+      calc(path),
+      plot(WIDTH, HEIGHT, STATE_PLOT, STATE_DEFAULT),
+      pentomino(WIDTH, HEIGHT) {
+    bmp::loadLetterGlyph();
+}
+
 CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_height)
     : screen_width(screen_width),
       screen_height(screen_height),
       formula_area_height(formula_area_height),
       renderer(screen_width, screen_height),
+      plot(screen_width, screen_height, STATE_PLOT, STATE_DEFAULT),
+      pentomino(screen_width, screen_height) {
+    bmp::loadLetterGlyph();
+}
+
+CalcAppAPI::CalcAppAPI(int screen_width, int screen_height, int formula_area_height, const std::string& path)
+    : screen_width(screen_width),
+      screen_height(screen_height),
+      formula_area_height(formula_area_height),
+      renderer(screen_width, screen_height),
+      calc(path),
       plot(screen_width, screen_height, STATE_PLOT, STATE_DEFAULT),
       pentomino(screen_width, screen_height) {
     bmp::loadLetterGlyph();

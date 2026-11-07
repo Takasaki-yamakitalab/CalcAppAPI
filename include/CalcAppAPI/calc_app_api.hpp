@@ -44,7 +44,9 @@ private:
     pentomino_bmp::PentominoBMP pentomino;
 public:
     CalcAppAPI();
+    CalcAppAPI(const std::string& scicalcmem_path);
     CalcAppAPI(int screen_width, int screen_height, int formula_area_height);
+    CalcAppAPI(int screen_width, int screen_height, int formula_area_height, const std::string& scicalcmem_path);
     int init();
     int process_input(const std::string& key);
     int process_input_normal(const std::string& key);
