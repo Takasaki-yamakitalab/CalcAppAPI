@@ -78,11 +78,10 @@ int CalcAppAPI::process_input_normal(const std::string& key) {
         this->state = STATE_DEFAULT;
         return this->state;
     }
-    if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND) return 0;
-    if (this->state == STATE_CALC || this->state == STATE_EXPAND) {
+    if (this->state != STATE_DEFAULT && this->state != STATE_CALC && this->state != STATE_EXPAND && this->state != STATE_FACTOR) return 0;
+    if (this->state == STATE_CALC || this->state == STATE_EXPAND || this->state == STATE_FACTOR) {
         if (key != "left" && key != "right" && key != "equal" && key != "del") {
-            this->cursor = 0;
-            this->input.clear();
+            math_renderer::process_input(this->input, this->cursor, "ac");
             this->display_offsetX = 0;
             this->display_offsetY = 0;
         }
@@ -96,8 +95,7 @@ int CalcAppAPI::process_input_normal(const std::string& key) {
     if (this->state == STATE_PLOT) {
         this->plot.delete_var_name();
         this->plot.plot(this->input, "x");
-        this->cursor = 0;
-        this->input.clear();
+        math_renderer::process_input(this->input, this->cursor, "ac");
         this->display_offsetX = 0;
         this->display_offsetY = 0;
         this->cursor_info.height = 0;
@@ -321,11 +319,11 @@ int CalcAppAPI::process_draw_pentomino(uint32_t* dst, uint32_t stride_pixels) {
 }
 
 int CalcAppAPI::process_touch_move_cursor(int x, int y) {
-    this->got_input = true;
     math_renderer::move_cursor_touch(this->input, this->cursor, x, y);
     return this->state;
 }
 int CalcAppAPI::process_touch_screen(int x, int y) {
+    this->got_input = true;
     switch (this->state) {
         case STATE_DEFAULT:
         case STATE_CALC:
@@ -342,14 +340,19 @@ int CalcAppAPI::process_touch_screen(int x, int y) {
     return this->state;
 }
 int CalcAppAPI::process_swipe_screen(int dx, int dy) {
+    this->got_input = true;
     switch (this->state) {
         case STATE_DEFAULT:
         case STATE_CALC:
         case STATE_EXPAND:
         case STATE_FACTOR:
+            if (abs(dy) > abs(dx)) {
+                if (dy > 0) math_renderer::process_input(this->input, cursor, "up");
+                if (dy < 0) math_renderer::process_input(this->input, cursor, "down");
+            }
             return this->state;
         case STATE_PLOT:
-            plot.process_swipe(dx, dy);
+            plot.process_swipe(-dx/2, dy/2);
             return this->state;
         default:
             break;
